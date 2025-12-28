@@ -16,14 +16,10 @@ export function auth(req: any, res: any, next: any) {
       email: string;
     };
 
-    console.log('AUTH DECODED JWT:', decoded.id); // 🔥 ADD THIS
-    
     req.user = {
       userId: decoded.id,
       email: decoded.email,
     };
-    console.log('AUTH ORG ID:',req.user); // 🔥 ADD THIS
-
     next();
   } catch (err) {
     console.error('AUTH ERROR:', err);

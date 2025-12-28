@@ -1,7 +1,39 @@
 import { DataTypes, Model } from "sequelize";
 import sequelize from "../config/database.js";
 
-export class Lead extends Model {}
+export interface LeadAttributes {
+  id?: string;
+  org_id: string;
+  organization_id: string;
+  source?: string;
+  fullName?: string;
+  email?: string;
+  emailStatus?: 'VALID' | 'INVALID' | 'UNKNOWN';
+  linkedinUrl?: string;
+  jobTitle?: string;
+  companyName?: string;
+  companyDomain?: string;
+  score?: number;
+  scoreReason?: string;
+  priority?: 'HOT' | 'WARM' | 'COLD';
+  status?:
+    | 'NEW'
+    | 'QUALIFIED'
+    | 'IN_CAMPAIGN'
+    | 'RESPONDED'
+    | 'FOLLOW_UP_LATER'
+    | 'NOT_INTERESTED'
+    | 'MEETING_BOOKED'
+    | 'CLOSED'
+    | 'WON';
+  buying_intent_score?: string;
+  job_id?: string;
+  createdAt?: Date;
+  enriched?: boolean;
+  meta?: object;
+}
+
+export class Lead extends Model<LeadAttributes>  {}
 
 Lead.init(
   {

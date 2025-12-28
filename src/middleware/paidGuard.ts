@@ -11,7 +11,6 @@ export async function paidGuard(req: any, res: any, next: any) {
       return res.status(400).json({ message: 'Missing userId in user context' });
     }
 
-    console.log("PAID GUARD - userId:", userId);
     // Find membership by userId
     const membership = await Membership.findOne({ where: { user_id: userId } });
     const orgId = membership ? membership.getDataValue('organization_id') : undefined;

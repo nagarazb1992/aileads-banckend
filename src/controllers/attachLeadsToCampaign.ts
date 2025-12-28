@@ -69,9 +69,6 @@ export async function getAllCampaignLeads(req: any, res: any) {
     where: { campaign_id: campaignId },
   });
 
-  // Dynamically import Lead model to avoid circular dependency
-  const { Lead } = await import("../models/lead.model.js");
-
   // Fetch lead details for each campaign lead
   const leadsWithDetails = await Promise.all(
     campaignLeads.map(async (cl: any) => {

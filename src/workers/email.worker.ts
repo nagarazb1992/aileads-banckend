@@ -1,7 +1,7 @@
 import { Op } from 'sequelize';
 import { EmailLog } from '../models/EmailLog.js';
 import { Campaign } from '../models/campaign.model.js';
-import { CampaignLead } from '../models/campaignLead.model.js';
+import { CampaignLead } from '../models/CampaignLead.js';
 import { Lead } from '../models/lead.model.js';
 import { SequenceStep } from '../models/SequenceStep.js';
 import { EmailTemplate } from '../models/EmailTemplate.js';
@@ -12,8 +12,10 @@ import { sendCampaignEmail } from '../services/emailSender.service.js';
  * Runs every 1 minute
  */
 export async function emailSendWorker() {
-  const now = new Date();
+  // Use 2 minutes back for scheduled_at filter
+  const now = new Date(Date.now() - 2 * 60 * 1000);
 
+  // console.log('Email Send Worker running at', now.toISOString());
   const logs = await EmailLog.findAll({
     where: {
       status: 'SCHEDULED',
@@ -22,6 +24,8 @@ export async function emailSendWorker() {
     limit: 50,
     order: [['scheduled_at', 'ASC']]
   });
+
+  // console.log(`Found ${logs.length} emails to send`);
 
   for (const log of logs) {
     try {
@@ -47,11 +51,14 @@ export async function emailSendWorker() {
       const step = await SequenceStep.findOne({
         where: {
           sequence_id: campaign.sequence_id,
-          step_order: log.step_order
+          order: log.step_order
         },
-        include: [EmailTemplate]
+        include: [{ model: EmailTemplate, as: 'emailTemplate' }]
       });
-      if (!step || !step.EmailTemplate) continue;
+
+      // Debug: log the emailTemplate object
+      if (!step || !step.emailTemplate) continue;
+      console.log('EmailTemplate for log', log.id, step.emailTemplate);
 
       // 5️⃣ Fetch email account
       const emailAccount = await EmailAccount.findByPk(
@@ -59,13 +66,19 @@ export async function emailSendWorker() {
       );
       if (!emailAccount || !emailAccount.is_active) continue;
 
-      // 6️⃣ Send email
-      await sendCampaignEmail({
-        account: emailAccount,
-        to: lead.email,
-        subject: render(step.EmailTemplate.subject, lead),
-        html: render(step.EmailTemplate.body, lead)
-      });
+      // console.log("Email account for log", log.id, emailAccount);
+
+   
+        const subject = typeof step.emailTemplate.get === 'function' ? step.emailTemplate.get('subject') : step.emailTemplate.subject;
+        const body = typeof step.emailTemplate.get === 'function' ? step.emailTemplate.get('body') : step.emailTemplate.body;
+        
+        // 6️⃣ Send email
+        await sendCampaignEmail({
+          account: emailAccount,
+          to: lead.email,
+          subject: render(subject, lead),
+          html: render(body, lead)
+        });
 
       // 7️⃣ Mark as sent
       await log.update({
@@ -77,6 +90,7 @@ export async function emailSendWorker() {
       await campaignLead.update({
         current_step: log.step_order
       });
+      console.log('EMAIL SENT to', lead.email);
 
     } catch (err) {
       console.error('EMAIL SEND FAILED:', err);
@@ -91,7 +105,8 @@ export async function emailSendWorker() {
 /**
  * Simple variable replacement
  */
-function render(template: string, lead: any) {
+function render(template: string | undefined | null, lead: any) {
+  if (!template) return '';
   return template
     .replace(/{{name}}/g, lead.name || '')
     .replace(/{{email}}/g, lead.email || '')

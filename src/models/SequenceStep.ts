@@ -3,7 +3,18 @@ import sequelize from '../config/database.js';
 import { Sequence } from './Sequence.js';
 import { EmailTemplate } from './EmailTemplate.js';
 
-export class SequenceStep extends Model {}
+export interface SequenceStepAttributes {
+  id?: string;
+  sequence_id: string;
+  order: number;
+  day_offset: number;
+  channel: 'EMAIL' | 'LINKEDIN' | 'WHATSAPP';
+  subject?: string;
+  message: string;
+  email_template_id?: string;
+}
+
+export class SequenceStep extends Model<SequenceStepAttributes> implements SequenceStepAttributes {}
 
 SequenceStep.init(
   {

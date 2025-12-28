@@ -19,6 +19,7 @@ import templateRoutes from "./routes/template.routes.js";
 import icpProfileRoutes from "./routes/icpProfile.routes.js";
 import emailRoutes from "./routes/emailRoutes.js";
 import analyticsRoutes from "./routes/analytics.routes.js";
+import contactRoutes from "./routes/contact.route.js";
 
 const app = express();
 app.use(cors());
@@ -37,6 +38,7 @@ app.use("/api/templates", templateRoutes);
 app.use("/api/icp-profiles", icpProfileRoutes);
 app.use("/api/email", emailRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use("/api/contact", contactRoutes);
 
 
 // startCreditResetCron();
