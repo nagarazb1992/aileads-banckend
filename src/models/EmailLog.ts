@@ -1,7 +1,17 @@
 import { DataTypes, Model } from 'sequelize';
 import sequelize from '../config/database.js';
 
-export class EmailLog extends Model {}
+export interface EmailLogAttributes {
+  id?: string;
+  campaign_id: string;
+  lead_id: string;
+  step_order: number;
+  scheduled_at?: Date;
+  status: 'SENT' | 'OPENED' | 'REPLIED' | 'SCHEDULED' | 'FAILED';
+  sent_at?: Date;
+}
+
+export class EmailLog extends Model<EmailLogAttributes> {}
 
 EmailLog.init(
   {

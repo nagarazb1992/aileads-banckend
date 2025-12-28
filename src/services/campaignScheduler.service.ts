@@ -5,6 +5,9 @@ import { SequenceStep } from "../models/SequenceStep.js";
 
 
 export async function scheduleCampaignEmails(campaignId: string) {
+  
+  console.log('Starting to schedule emails for campaign:', campaignId);
+  
   const campaign = await Campaign.findByPk(campaignId);
   if (!campaign) return;
 
@@ -40,7 +43,8 @@ export async function scheduleCampaignEmails(campaignId: string) {
         where: {
           campaign_id: campaignId,
           lead_id: lead.lead_id,
-          step_order: step.order
+          step_order: step.order,
+          status: 'SCHEDULED'
         }
       });
       

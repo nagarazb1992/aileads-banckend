@@ -1,7 +1,18 @@
 import { DataTypes, Model } from "sequelize";
 import sequelize from "../config/database.js";
 
-export class Campaign extends Model {}
+export interface CampaignAttributes {
+  id?: string;
+  name: string;
+  org_id: string;
+  sequence_id?: string;
+  primary_channel: 'EMAIL' | 'LINKEDIN' | 'WHATSAPP';
+  status: 'DRAFT' | 'RUNNING' | 'PAUSED' | 'COMPLETED';
+  organization_id?: string;
+  email_account_id?: string;
+}
+
+export class Campaign extends Model<CampaignAttributes>  {}
 
 Campaign.init(
   {

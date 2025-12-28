@@ -1,7 +1,26 @@
 import { DataTypes, Model } from 'sequelize';
 import sequelize from '../config/database.js';
 
-export class EmailAccount extends Model {}
+export interface EmailAccountAttributes {
+  id?: string;
+  org_id: string;
+  user_id: string;
+  provider: 'SMTP' | 'GMAIL';
+  email: string;
+  smtp_host?: string;
+  smtp_port?: number;
+  smtp_user?: string;
+  smtp_password_encrypted?: string;
+  gmail_refresh_token?: string;
+  daily_limit?: number;
+  sent_today?: number;
+  is_active?: boolean;
+  created_at?: Date;
+  updated_at?: Date;
+  last_sync_at?: Date;
+}
+
+export class EmailAccount extends Model<EmailAccountAttributes> {}
 
 EmailAccount.init(
   {

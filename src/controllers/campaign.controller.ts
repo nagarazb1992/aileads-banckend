@@ -17,7 +17,7 @@ export async function createCampaign(req: any, res: any) {
 
   console.log("Organization ID for campaign creation:", orgId);
 
-  const { name, channel, sequence_id, status } = req.body;
+  const { name, channel, sequence_id, status, email_account_id } = req.body;
 
   console.log("Creating campaign with data:", req.body);
 
@@ -43,6 +43,7 @@ export async function createCampaign(req: any, res: any) {
         primary_channel: dbChannel,
         status: status,
         organization_id: orgId,
+        email_account_id: email_account_id,
       },
       { returning: true, transaction: tx }
     )) as Campaign & { [key: string]: any };
@@ -134,7 +135,7 @@ export async function updateCampaign(req: any, res: any) {
     ? membership.getDataValue("organization_id")
     : undefined;
   const campaignId = req.params.id;
-  const { name, channel, sequence_id, status } = req.body;
+  const { name, channel, sequence_id, status, email_account_id } = req.body;
   try {
     const campaign = (await Campaign.findOne({
       where: { id: campaignId, org_id: orgId },
@@ -158,6 +159,7 @@ export async function updateCampaign(req: any, res: any) {
     campaign.primary_channel = dbChannel || campaign.primary_channel;
     campaign.sequence_id = sequence_id || campaign.sequence_id;
     campaign.status = status || campaign.status;
+    campaign.email_account_id = email_account_id || campaign.email_account_id;
     await campaign.save();
     res.json({ message: "Campaign updated successfully", campaign });
   } catch (error) {

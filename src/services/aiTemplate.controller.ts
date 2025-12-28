@@ -22,7 +22,7 @@ export async function generateEmailTemplate(
     product,
     tone = 'professional',
     length = 'medium',
-    callToAction = 'Would you be open to a quick 15-minute chat?'
+    callToAction = 'Would you be open to a quick 15-minute chat?',
   } = input;
 
   const prompt = `
@@ -45,7 +45,10 @@ ${tone}
 LENGTH:
 ${length}
 
-REQUIREMENTS:
+STRICT PLACEHOLDER RULES:
+- Subject MUST include {{company}}
+- Opening line MUST include {{name}} and {{company}}
+- Signature MUST include {{email}}
 - Use ONLY these placeholders:
   {{name}}, {{email}}, {{company}}
 - Do NOT invent personal data
@@ -56,7 +59,7 @@ REQUIREMENTS:
 CALL TO ACTION:
 ${callToAction}
 
-RETURN STRICT JSON ONLY in this format:
+RETURN STRICT JSON ONLY:
 {
   "subject": "",
   "body": ""
@@ -70,10 +73,29 @@ RETURN STRICT JSON ONLY in this format:
   });
 
   const content = response.choices?.[0]?.message?.content;
+  if (!content) throw new Error('No response from OpenAI');
 
-  if (!content) {
-    throw new Error('No response from OpenAI');
+  const parsed = JSON.parse(content);
+
+  // 🔒 SAFETY NET
+  if (!parsed.subject.includes('{{company}}')) {
+    parsed.subject = `Quick idea for {{company}}`;
   }
 
-  return JSON.parse(content);
+  if (!parsed.body.includes('{{name}}')) {
+    parsed.body = `Hi {{name}},\n\n${parsed.body}`;
+  }
+
+  if (!parsed.body.includes('{{company}}')) {
+    parsed.body = parsed.body.replace(
+      'Hi {{name}},',
+      'Hi {{name}},\n\nI was looking into {{company}}'
+    );
+  }
+
+  if (!parsed.body.includes('{{email}}')) {
+    parsed.body += `\n\nBest regards,\n{{email}}`;
+  }
+
+  return parsed;
 }
