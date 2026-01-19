@@ -20,6 +20,9 @@ import icpProfileRoutes from "./routes/icpProfile.routes.js";
 import emailRoutes from "./routes/emailRoutes.js";
 import analyticsRoutes from "./routes/analytics.routes.js";
 import contactRoutes from "./routes/contact.route.js";
+import { linkedinWorker } from "./workers/linkedin.worker.js";
+import { whatsappWorker } from "./workers/whatsapp.worker.js";
+import linkedinRoutes from "./routes/linkedin.routes.js";
 
 const app = express();
 app.use(cors());
@@ -39,6 +42,7 @@ app.use("/api/icp-profiles", icpProfileRoutes);
 app.use("/api/email", emailRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use("/api/contact", contactRoutes);
+app.use('/api/linkedin', linkedinRoutes);
 
 
 // startCreditResetCron();
@@ -71,5 +75,10 @@ cron.schedule("* * * * *", emailSendWorker);
 
 // Schedule replySyncWorker every 3 minutes
 cron.schedule("*/3 * * * *", replySyncWorker);
+
+cron.schedule('*/2 * * * *', async () => {
+  await linkedinWorker();
+  await whatsappWorker();
+});
 
 startServer();

@@ -7,14 +7,29 @@ export interface EmailAccountAttributes {
   user_id: string;
   provider: 'SMTP' | 'GMAIL';
   email: string;
+
+  // SMTP
   smtp_host?: string;
   smtp_port?: number;
   smtp_user?: string;
   smtp_password_encrypted?: string;
+
+  // IMAP
+  imap_host?: string;
+  imap_port?: number;
+  imap_secure?: boolean;
+  imap_user?: string;
+  imap_password_encrypted?: string;
+  imap_last_uid?: number;
+  imap_last_checked_at?: Date;
+
+  // Gmail
   gmail_refresh_token?: string;
+
   daily_limit?: number;
   sent_today?: number;
   is_active?: boolean;
+
   created_at?: Date;
   updated_at?: Date;
   last_sync_at?: Date;
@@ -50,11 +65,25 @@ EmailAccount.init(
       allowNull: false
     },
 
+    /** SMTP */
     smtp_host: DataTypes.STRING,
     smtp_port: DataTypes.INTEGER,
     smtp_user: DataTypes.STRING,
     smtp_password_encrypted: DataTypes.TEXT,
 
+    /** IMAP */
+    imap_host: DataTypes.STRING,
+    imap_port: DataTypes.INTEGER,
+    imap_secure: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: true
+    },
+    imap_user: DataTypes.STRING,
+    imap_password_encrypted: DataTypes.TEXT,
+    imap_last_uid: DataTypes.BIGINT,
+    imap_last_checked_at: DataTypes.DATE,
+
+    /** Gmail */
     gmail_refresh_token: DataTypes.TEXT,
 
     daily_limit: {
@@ -71,17 +100,17 @@ EmailAccount.init(
       type: DataTypes.BOOLEAN,
       defaultValue: true
     },
-    created_at:{
+
+    created_at: {
       type: DataTypes.DATE,
       allowNull: false,
-      defaultValue: DataTypes.NOW,
-      field: 'created_at',
+      defaultValue: DataTypes.NOW
     },
-    updated_at:{
+
+    updated_at: {
       type: DataTypes.DATE,
       allowNull: false,
-      defaultValue: DataTypes.NOW,
-      field: 'updated_at',
+      defaultValue: DataTypes.NOW
     },
 
     last_sync_at: DataTypes.DATE
