@@ -10,6 +10,7 @@ import { LinkedInScrapeJob, LinkedInScrapeStatus } from "../models/LinkedinScrap
 import { scrapeQueue } from "../workers/linkedinScrape.worker.js";
 import { calculateLinkedInCredits } from "../utils/credit.util.js";
 import { CreditWallet } from "../models/index.js";
+import { CampaignLead } from "../models/CampaignLead.js";
 
 export async function scrapeLinkedin(req: any, res: any) {
   const membership = await Membership.findOne({
@@ -212,6 +213,28 @@ export async function getScrapeResults(req: any, res: any) {
     leads
   });
 }
+
+
+export async function apifyLinkedinWebhook(req: any, res: any) {
+  const { leadEmail, replyText } = req.body;
+
+  if (!replyText) return res.sendStatus(200);
+
+  // Mark lead replied
+  await CampaignLead.update(
+    { status: 'REPLIED' },
+    { where: { lead_email: leadEmail } }
+  );
+
+  // Trigger AI reply analysis (next section)
+  await analyzeInboundMessage({
+    text: replyText,
+    channel: 'LINKEDIN'
+  });
+
+  res.sendStatus(200);
+}
+
 
 
 
