@@ -20,6 +20,8 @@ export async function connectSMTP(req: any, res: any) {
     imapLastCheckedAt
   } = req.body;
 
+  console.log('Connecting SMTP with:', req.body);
+
   const membership = await Membership.findOne({
       where: { user_id: req.user.userId },
     });
@@ -108,53 +110,103 @@ export async function getEmailAccount(req: any, res: any) {
   res.json(account);
 }
 
-// Update an EmailAccount by id
+// Update an EmailAccount by i
 export async function updateEmailAccount(req: any, res: any) {
-  const { id } = req.params;
-  const membership = await Membership.findOne({ where: { user_id: req.user.userId } });
-  let orgId = membership ? membership.getDataValue("organization_id") : undefined;
-  const account = await EmailAccount.findOne({
-    where: { id, org_id: orgId }
-  });
-  if (!account) {
-    return res.status(404).json({ message: "Email account not found" });
+  try {
+    const { id } = req.params;
+
+    if (!req.user?.userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const membership = await Membership.findOne({
+      where: { user_id: req.user.userId }
+    });
+
+    if (!membership) {
+      return res.status(403).json({ message: "Organization not found" });
+    }
+
+    const orgId = membership.getDataValue("organization_id");
+
+    const account = await EmailAccount.findOne({
+      where: { id, org_id: orgId }
+    });
+
+    if (!account) {
+      return res.status(404).json({ message: "Email account not found" });
+    }
+
+    const {
+      email,
+      smtpHost,
+      smtpPort,
+      smtpUser,
+      smtpPassword,
+      dailyLimit,
+      isActive,
+      imapHost,
+      imapPort,
+      imapSecure,
+      imapUser,
+      imapPassword,
+      imapLastUid,
+      imapLastCheckedAt
+    } = req.body;
+
+    const updatePayload: any = {
+      ...(email !== undefined && { email }),
+      ...(smtpHost !== undefined && { smtp_host: smtpHost }),
+      ...(smtpPort !== undefined && { smtp_port: smtpPort }),
+      ...(smtpUser !== undefined && { smtp_user: smtpUser }),
+      ...(dailyLimit !== undefined && { daily_limit: dailyLimit }),
+      ...(isActive !== undefined && { is_active: isActive }),
+      ...(imapHost !== undefined && { imap_host: imapHost }),
+      ...(imapPort !== undefined && { imap_port: imapPort }),
+      ...(imapSecure !== undefined && { imap_secure: imapSecure }),
+      ...(imapUser !== undefined && { imap_user: imapUser }),
+    };
+
+    // Only set imap_last_uid if it's a valid number
+    if (imapLastUid !== undefined && imapLastUid !== null && imapLastUid !== "" && !isNaN(Number(imapLastUid))) {
+      updatePayload.imap_last_uid = Number(imapLastUid);
+    }
+
+    // Only set imap_last_checked_at if it's a valid date
+    if (imapLastCheckedAt !== undefined && imapLastCheckedAt !== null && imapLastCheckedAt !== "") {
+      const date = new Date(imapLastCheckedAt);
+      if (!isNaN(date.getTime())) {
+        updatePayload.imap_last_checked_at = date;
+      }
+    }
+
+    // Encrypt only if password is provided & non-empty
+    if (smtpPassword) {
+      updatePayload.smtp_password_encrypted = encrypt(smtpPassword);
+    }
+
+    if (imapPassword) {
+      updatePayload.imap_password_encrypted = encrypt(imapPassword);
+    }
+
+    account.set(updatePayload);
+    await account.save();
+
+    // ❌ Never expose encrypted secrets
+    const safeAccount = account.get({ plain: true });
+    delete safeAccount.smtp_password_encrypted;
+    delete safeAccount.imap_password_encrypted;
+
+    return res.json({
+      success: true,
+      account: safeAccount
+    });
+  } catch (error) {
+    console.error("updateEmailAccount error:", error);
+    return res.status(500).json({ message: "Internal server error" });
   }
-  // Only update allowed fields
-  const {
-    email,
-    smtpHost,
-    smtpPort,
-    smtpUser,
-    smtpPassword,
-    dailyLimit,
-    isActive,
-    imapHost,
-    imapPort,
-    imapSecure,
-    imapUser,
-    imapPassword,
-    imapLastUid,
-    imapLastCheckedAt
-  } = req.body;
-  account.set({
-    ...(email !== undefined && { email }),
-    ...(smtpHost !== undefined && { smtp_host: smtpHost }),
-    ...(smtpPort !== undefined && { smtp_port: smtpPort }),
-    ...(smtpUser !== undefined && { smtp_user: smtpUser }),
-    ...(smtpPassword !== undefined && { smtp_password_encrypted: encrypt(smtpPassword) }),
-    ...(dailyLimit !== undefined && { daily_limit: dailyLimit }),
-    ...(isActive !== undefined && { is_active: isActive }),
-    ...(imapHost !== undefined && { imap_host: imapHost }),
-    ...(imapPort !== undefined && { imap_port: imapPort }),
-    ...(imapSecure !== undefined && { imap_secure: imapSecure }),
-    ...(imapUser !== undefined && { imap_user: imapUser }),
-    ...(imapPassword !== undefined && { imap_password_encrypted: encrypt(imapPassword) }),
-    ...(imapLastUid !== undefined && { imap_last_uid: imapLastUid }),
-    ...(imapLastCheckedAt !== undefined && { imap_last_checked_at: imapLastCheckedAt })
-  });
-  await account.save();
-  res.json({ success: true, account });
 }
+
 
 // Delete an EmailAccount by id
 export async function deleteEmailAccount(req: any, res: any) {

@@ -1,4 +1,5 @@
 import Imap from 'imap';
+import { simpleParser } from 'mailparser';
 import { EmailAccount } from '../models/EmailAccount.js';
 import { decrypt } from '../utils/crypto.js';
 import { Lead } from '../models/lead.model.js';
@@ -14,33 +15,31 @@ export async function replySyncWorker() {
     }
   });
 
+
+
   for (const account of accounts) {
     if (account.provider !== 'SMTP') continue;
 
 
 
     // Use IMAP host/port/secure from env if present, else fallback to account fields
-    const imapHost = process.env.IMAP_HOST ? process.env.IMAP_HOST : (account.smtp_host || 'localhost');
-    const imapPort = process.env.IMAP_PORT ? parseInt(process.env.IMAP_PORT) : (account.imap_port || 993);
-    const imapSecure = process.env.IMAP_SECURE ? process.env.IMAP_SECURE === 'true' : true;
-    console.log('Connecting to IMAP:', {
-      user: account.smtp_user,
-      host: imapHost,
-      port: imapPort,
-      tls: imapSecure === 'true',
-      tlsOptions: { rejectUnauthorized: false }
-    });
+    const imapHost = account.imap_host;
+    const imapPort = account.imap_port ;
+    const imapSecure = account.imap_secure;
+    const imapUser = account.imap_user;
+    const imapPassword = account.imap_password_encrypted ? decrypt(account.imap_password_encrypted) : undefined;
 
     const imap = new Imap({
-      user: account.smtp_user,
-      password: decrypt(account.smtp_password_encrypted),
+      user: imapUser,
+      password: imapPassword,
       host: imapHost,
       port: imapPort,
       tls: imapSecure,
-      tlsOptions: { rejectUnauthorized: false } // Allow self-signed certs
+      tlsOptions: { rejectUnauthorized: false }
     });
 
     imap.once('ready', () => {
+      console.log('IMAP connected successfully:', imapUser, imapHost, imapPort);
       imap.openBox('INBOX', false, () => {
         imap.search(['UNSEEN'], (err, results) => {
           if (!results || results.length === 0) {
