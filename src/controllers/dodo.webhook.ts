@@ -26,29 +26,30 @@ export const dodoWebhook = async (req:any, res:any) => {
 
   switch (event.type) {
     case "subscription.created":
-    case "subscription.updated": {
-      // Dodo payment webhook logic
+    case "subscription.active": {
+      // Dodo payment webhook logic (mapped to sample data)
       const data = event.data;
-      const eventId = data.id;
-      console.log('Dodo webhook custom_data:', data.custom_data);
-      const planId = data.custom_data?.plan?.toLowerCase();
-      let orgId = data.custom_data?.orgId || null;
+      const eventId = data.subscription_id;
+      const planId = data.product_id; // Map product_id to planId
+      const orgId = data.customer?.customer_id || null; // Use customer_id as orgId (adjust as needed)
+      const userEmail = data.customer?.email;
 
       // If orgId is not provided, try to get it from user email
-      if (!orgId && data.custom_data?.email) {
-        const user = await User.findOne({ where: { email: data.custom_data.email } });
+      let resolvedOrgId = orgId;
+      if (!resolvedOrgId && userEmail) {
+        const user = await User.findOne({ where: { email: userEmail } });
         if (!user) {
-          throw new Error('User not found for email: ' + data.custom_data.email);
+          throw new Error('User not found for email: ' + userEmail);
         }
         const membership = await Membership.findOne({ where: { user_id: user.getDataValue('id') } });
         if (!membership) {
           throw new Error('Membership not found for user');
         }
-        orgId = membership.getDataValue('organization_id');
+        resolvedOrgId = membership.getDataValue('organization_id');
       }
 
-      if (!planId || !orgId) {
-        throw new Error('Missing orgId or plan in custom_data, and could not resolve from user');
+      if (!planId || !resolvedOrgId) {
+        throw new Error('Missing orgId or planId in webhook data, and could not resolve from user');
       }
 
       // 1️⃣ Idempotency check
@@ -63,50 +64,66 @@ export const dodoWebhook = async (req:any, res:any) => {
 
       // 3️⃣ Create or activate subscription
       let subscription = await Subscription.findOne({
-        where: { orgId: orgId },
+        where: { orgId: resolvedOrgId },
       });
 
+      // Use Dodo's period fields for currentPeriodEnd if available
       const now = new Date();
-      const nextMonth = new Date(now);
-      nextMonth.setMonth(now.getMonth() + 1);
+      let currentPeriodEnd = null;
+      if (data.next_billing_date) {
+        currentPeriodEnd = new Date(data.next_billing_date);
+      } else if (data.expires_at) {
+        currentPeriodEnd = new Date(data.expires_at);
+      } else {
+        currentPeriodEnd = new Date(now);
+        currentPeriodEnd.setMonth(now.getMonth() + 1);
+      }
 
       if (!subscription) {
         subscription = await Subscription.create({
-          orgId: orgId,
+          orgId: resolvedOrgId,
           planId: plan.getDataValue('id'),
-          status: 'ACTIVE',
+          status: data.status ? data.status.toUpperCase() : 'ACTIVE',
           provider: 'PADDLE',
-          providerSubscriptionId: data.id,
+          providerSubscriptionId: data.subscription_id,
           currentPeriodStart: now,
-          currentPeriodEnd: nextMonth,
+          currentPeriodEnd: currentPeriodEnd,
         });
         console.log('Inserted Subscription:', subscription.toJSON());
       } else {
-        subscription.setDataValue('status', 'ACTIVE');
+        subscription.setDataValue('status', data.status ? data.status.toUpperCase() : 'ACTIVE');
         subscription.setDataValue('planId', plan.getDataValue('id'));
-        subscription.setDataValue('providerSubscriptionId', data.id);
+        subscription.setDataValue('providerSubscriptionId', data.subscription_id);
         subscription.setDataValue('currentPeriodStart', now);
-        subscription.setDataValue('currentPeriodEnd', nextMonth);
+        subscription.setDataValue('currentPeriodEnd', currentPeriodEnd);
         await subscription.save();
         console.log('Updated Subscription:', subscription.toJSON());
       }
 
-      // 4️⃣ Allocate credits based on plan id
+      // 4️⃣ Allocate credits based on plan id (fallback to plan name if needed)
       const planCreditsMap = {
         starter: 500,
         growth: 2000,
         pro: 5000,
         agency: 15000,
       };
-      const planKey = String(plan.getDataValue('id'));
-      let credits = 0;
-      if (planKey === 'starter' || planKey === 'growth' || planKey === 'pro' || planKey === 'agency') {
-        credits = planCreditsMap[planKey];
+      let planKey = plan.getDataValue('id');
+      if (!planCreditsMap[planKey] && plan.getDataValue('name')) {
+        planKey = plan.getDataValue('name').toLowerCase();
       }
-      let wallet = await CreditWallet.findOne({ where: { organization_id: orgId } });
+      let credits = 0;
+      if (
+        planKey === 'starter' ||
+        planKey === 'growth' ||
+        planKey === 'pro' ||
+        planKey === 'agency'
+      ) {
+        credits = planCreditsMap[planKey as keyof typeof planCreditsMap];
+      }
+      let wallet = await CreditWallet.findOne({ where: { organization_id: resolvedOrgId } });
       if (!wallet) {
         wallet = await CreditWallet.create({
-          organization_id: orgId,
+          organization_id: resolvedOrgId,
           balance: credits,
         });
         console.log('Inserted CreditWallet:', wallet.toJSON());
@@ -118,7 +135,7 @@ export const dodoWebhook = async (req:any, res:any) => {
 
       // 5️⃣ Log billing event
       const billingEvent = await BillingEvent.create({
-        org_id: orgId,
+        org_id: resolvedOrgId,
         subscription_id: subscription.getDataValue('id'),
         provider: 'PADDLE',
         event_type: event.type,
