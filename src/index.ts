@@ -23,11 +23,14 @@ import contactRoutes from "./routes/contact.route.js";
 import { linkedinWorker } from "./workers/linkedin.worker.js";
 import { whatsappWorker } from "./workers/whatsapp.worker.js";
 import linkedinRoutes from "./routes/linkedin.routes.js";
+import billingRoutes from "./routes/billing.routes.js";
+import bodyParser from "body-parser";
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use("/api", bodyParser.json());
 
 app.use("/api/users", userRoutes);
 app.use("/api", planRoutes);
@@ -44,6 +47,7 @@ app.use("/api/email", emailRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use("/api/contact", contactRoutes);
 app.use('/api/linkedin', linkedinRoutes);
+app.use("/api/billing", billingRoutes);
 
 //test health check
 app.get("/health", (req, res) => {
