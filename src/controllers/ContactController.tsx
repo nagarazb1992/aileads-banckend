@@ -2,6 +2,7 @@
 import type { Request, Response } from "express";
 import { ContactMessage } from "../models/ContactMessage.js";
 import { sendEmail } from "../services/email.service.js";
+import { DemoBooking } from "../models/DemoBooking.js";
 
 export const submitContactForm = async (req: any, res: any) => {
   const { name, email, message } = req.body;
@@ -48,3 +49,49 @@ export const submitContactForm = async (req: any, res: any) => {
     });
   }
 };
+
+// demo booking function
+export const bookDemo = async (req: any, res: any) => {
+  const { name, email, company, message } = req.body;
+  if (!name || !email || !company) {
+    return res.status(400).json({
+      success: false,
+      message: "All fields are required",
+    })
+  }
+  try {
+    const demoBooking = await DemoBooking.create({
+      name,
+      email,
+      company,
+      message,
+      ip_address: req.ip,
+    });
+
+    // 2️⃣ Send notification email using existing sendEmail service
+    await sendEmail(
+      process.env.CONTACT_RECEIVER_EMAIL!,
+      "📩 New Demo Booking Message",
+      `<div>
+        <strong>Name:</strong> ${name}<br/>
+        <strong>Email:</strong> ${email}<br/>
+        <strong>Company:</strong> ${company}<br/>
+        <strong>Message:</strong><br/>
+        <pre>${message}</pre>
+      </div>`
+    );
+
+    return res.status(201).json({
+      success: true,
+      message: "Thanks for contacting us. We'll get back to you shortly.",
+      id: demoBooking.id,
+    });
+  } catch (error) {
+    console.error("Demo booking error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Something went wrong. Please try again later.",
+    });
+  }
+}

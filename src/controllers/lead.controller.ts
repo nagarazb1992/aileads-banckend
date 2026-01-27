@@ -192,3 +192,28 @@ export async function getLead(req: any, res: Response) {
     res.status(500).json({ message: "Failed to get lead" });
   }
 }
+
+// Delete a lead by ID
+export async function deleteLead(req: any, res: Response) {
+  try {
+    const { id } = req.params;
+    const membership = await Membership.findOne({
+      where: { user_id: req.user.userId },
+    });
+    let orgId = membership
+      ? membership.getDataValue("organization_id")
+      : undefined;
+    if (!orgId) {
+      return res.status(400).json({ message: "Missing orgId in user context" });
+    }
+    const lead = await Lead.findOne({ where: { id, org_id: orgId } });
+    if (!lead) {
+      return res.status(404).json({ message: "Lead not found" });
+    }
+    await lead.destroy();
+    res.status(200).json({ message: "Lead deleted successfully" });
+  } catch (error: any) {
+    console.error("DELETE LEAD ERROR:", error);
+    res.status(500).json({ message: "Failed to delete lead" });
+  }
+}

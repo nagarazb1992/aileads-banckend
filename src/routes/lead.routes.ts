@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { createLead, getAllLeads } from "../controllers/lead.controller.js";
+import { createLead, deleteLead, getAllLeads } from "../controllers/lead.controller.js";
 import { auth } from "../middleware/auth.js";
 import { paidGuard } from "../middleware/paidGuard.js";
 import { creditGuard } from "../middleware/creditGuard.js";
@@ -55,5 +55,7 @@ router.get("/leads/stats", auth, getLeadStats);
 // );
 
 router.post("/linkedin", auth, paidGuard, creditGuard, scrapeLinkedin);
+
+router.delete("/lead/:id", auth, deleteLead);
 
 export default router;
