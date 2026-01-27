@@ -61,7 +61,7 @@ export const loginUser = async ({ email, password }: LoginDTO) => {
   const token = jwt.sign(
     { id: user.getDataValue('id'), email: user.getDataValue('email') },
     secretKey,
-    { expiresIn: '1h' } // Token expires in 1 hour
+    { expiresIn: '2h' } // Token expires in 2 hours
   );
 
   return { user, token };
