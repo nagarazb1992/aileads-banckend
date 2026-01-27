@@ -103,7 +103,7 @@ export async function sendWelcomeEmail(
     const info = await transporter.sendMail({
       from: FROM_EMAIL,
       to: email,
-      subject: 'Welcome to LeadsPilot 🚀',
+      subject: 'Welcome to LeadsForg 🚀',
       html
     });
     console.log('Welcome email sent:', info.response);
