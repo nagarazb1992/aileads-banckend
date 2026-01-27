@@ -67,10 +67,12 @@ export async function sendEmail(to: string, subject: string, body: string) {
 
 export async function sendVerificationEmail(
   email: string,
+  firstName: string,
   token: string
 ) {
   const html = renderTemplate('verify-link.html', {
-    VERIFY_LINK: `${process.env.FRONTEND_URL}/verify-email?token=${token}`
+    VERIFY_LINK: `${process.env.FRONTEND_URL}/verify-email?token=${token}`,
+    NAME: firstName || 'there'
   });
 
   try {

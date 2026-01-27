@@ -82,7 +82,7 @@ export async function register(req: any, res: any) {
     role: 'OWNER',
   });
 
-  await sendVerificationEmail(email, verificationToken);
+  await sendVerificationEmail(email, firstName, verificationToken);
 
   // 🔥 4️⃣ SIGN JWT CORRECTLY
   const token = jwt.sign(
