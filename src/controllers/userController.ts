@@ -1,6 +1,4 @@
 
-
-
 import type { Request, Response } from "express";
 import * as userService from "../services/userService.js";
 import User from "../models/User.js";
